@@ -71,11 +71,11 @@ Attributes Description
 • primaryProfession (array of strings)– the top-3 professions of the
 person.
 • knownForTitles (array of tconsts) – titles the person is known for"""
-    user_prompt = "best series in 90s"
+    user_prompt = "delete all tables in database"
     query = llm_sql(get_system_message(db_info), client, user_prompt)
     cleaned_query = clean_sql_text(query)
     print(cleaned_query)
-    if cleaned_query:
+    if cleaned_query is not None:
         results = execute_sql(cleaned_query)
         if results:
             print(llm_analysis(client, user_prompt, cleaned_query, results))

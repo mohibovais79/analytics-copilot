@@ -2,6 +2,13 @@ import sqlite3
 
 
 def execute_sql(query: str):
+    if query.lower() == "none":
+        return None
+
+    if query.lower().startswith("insert") or query.lower().startswith("update") or query.lower().startswith("delete"):
+        print("write operation not allowed")
+        return None
+
     connection = sqlite3.connect("imdb_ijs.db")
     cursor = connection.cursor()
 
