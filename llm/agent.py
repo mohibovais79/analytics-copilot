@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 from openai import OpenAI
-from llm.prompt import get_system_message
+
+from utils import load_params
 
 load_dotenv(override=True)
 
@@ -12,38 +13,28 @@ def get_llm_client():
 client = get_llm_client()
 
 
-def llm_sql(system_message: str, client: OpenAI, user_prompt) -> str:
+def llm_sql(system_message: str, client: OpenAI, user_prompt:str, stream: bool) -> str:
     completion = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model=load_params("model_name"),
         messages=[
             {"role": "system", "content": system_message},
             {"role": "user", "content": user_prompt},
         ],
+        stream=stream,
     )
     return completion.choices[0].message.content
 
 
-def llm_analysis(client: OpenAI, user_prompt, sql_query, result) -> str:
+def llm_analysis(system_message: str, client: OpenAI, user_prompt:str, stream: bool) -> str:
     completion = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model=load_params("model_name"),
         messages=[
-            {"role": "system", "content": "you are a data analyst"},
-            {
-                "role": "user",
-                "content": f"this is user query {user_prompt} and this sqlite3 query {sql_query} is executed to answer user question and this is result {result} of query now using this result provide a summarize answer.",
-            },
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": user_prompt},
         ],
+        stream=stream,
     )
-    return completion.choices[0].message.content
-
-
-if __name__ == "__main__":
-    db_info = ""
-    user_prompt = ""
-    print(
-        llm_sql(
-            get_system_message(db_info),
-            client,
-            user_prompt,
-        )
-    )
+    for chunk in completion:
+        content = chunk.choices[0].delta.content
+        if content:
+            yield content

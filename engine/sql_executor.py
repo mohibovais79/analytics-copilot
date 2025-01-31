@@ -1,7 +1,9 @@
-import sqlite3
+import pandas as pd
+
+from data.loader import db_conn
 
 
-def execute_sql(query: str):
+def execute_sql(query: str, db_conn=db_conn):
     if query.lower() == "none":
         return None
 
@@ -9,18 +11,8 @@ def execute_sql(query: str):
         print("write operation not allowed")
         return None
 
-    connection = sqlite3.connect("imdb_ijs.db")
-    cursor = connection.cursor()
+    connection = db_conn()
 
-    cursor.execute(query)
-
-    results = cursor.fetchall()
-    print("results:", results)
-    if results:
-        connection.close()
-
-        return results
-    else:
-        connection.close()
-
-        return None
+    df = pd.read_sql_query(query, connection)
+    markdown_output = df.to_markdown(index=False)
+    return markdown_output

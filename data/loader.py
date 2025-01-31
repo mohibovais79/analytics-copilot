@@ -1,7 +1,10 @@
+import json
 import os
 import sqlite3
 
 import pandas as pd
+
+from utils import db_conn, load_params
 
 
 class CSVToSQLite:
@@ -10,7 +13,7 @@ class CSVToSQLite:
         self.db_name = db_name
         if not os.path.exists(db_name):
             print(f"Database '{db_name}' does not exist. Creating a new one.")
-        self.connection = sqlite3.connect(db_name)
+        self.connection = db_conn()
         self.cursor = self.connection.cursor()
 
     def create_table_from_csv(self, csv_file: str, table_name: str):
@@ -45,7 +48,7 @@ if __name__ == "__main__":
         "data/title_principals.csv",
         "data/title_ratings.csv",
     ]
-    db_name = "imdb_ijs.db"
+    db_name = load_params("db_name")
 
     csv_to_sqlite = CSVToSQLite(db_name)
 

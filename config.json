@@ -1,0 +1,6 @@
+{
+    "params": {
+        "db_name": "imdb_ijs.db",
+        "model_name": "llama-3.3-70b-versatile"
+    }
+}
