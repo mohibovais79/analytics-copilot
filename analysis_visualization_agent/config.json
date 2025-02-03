@@ -1,0 +1,10 @@
+{
+    "params": {
+        "allowed_modules": [
+            "numpy",
+            "pandas",
+            "seaborn"
+        ],
+        "model_name": "llama-3.3-70b-versatile"
+    }
+}
