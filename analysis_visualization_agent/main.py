@@ -1,12 +1,18 @@
-from openai import OpenAI
+from executor import CodeExecutor
+from visualization_prompt import get_user_prompt, system_prompt
 
-from analysis_visualization_agent.executor import CodeExecutor
-from analysis_visualization_agent.llm import llm_visualize
-from analysis_visualization_agent.utils import dataframe_to_markdown
-from analysis_visualization_agent.visualization_prompt import get_user_prompt, system_prompt
+from llm import llm_visualize
+from utils import dataframe_to_markdown
 
 if __name__ == "__main__":
-    prompt = "i want to see rating distribution"
-    datafarme_summary = dataframe_to_markdown("data/title_ratings.csv")
+    prompt = "generate visualization for total sales"
+    datafarme_summary = dataframe_to_markdown(r"D:\data_analytics_llm\data\title_ratings.csv")
     user_prompt = get_user_prompt(datafarme_summary, prompt)
-    response = llm_visualize(system_prompt, OpenAI, user_prompt)
+    print(user_prompt)
+    response = llm_visualize(system_prompt, user_prompt)
+    if response.code is not None:
+        print(response.code)
+        executor = CodeExecutor()
+        executor.execute_code(response.code)
+    else:
+        print(response.refusal)

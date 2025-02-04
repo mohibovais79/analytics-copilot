@@ -3,7 +3,8 @@
         "allowed_modules": [
             "numpy",
             "pandas",
-            "seaborn"
+            "seaborn",
+            "matplotlib.pyplot"
         ],
         "model_name": "llama-3.3-70b-versatile"
     }

@@ -4,7 +4,7 @@ import pandas as pd
 
 
 def load_params(param: str):
-    with open(r"D:\data_analytics_llm\analysis_visualization_agent\utils.py", "r") as f:
+    with open("config.json", "r") as f:
         data = json.load(f)
     return data["params"][param]
 

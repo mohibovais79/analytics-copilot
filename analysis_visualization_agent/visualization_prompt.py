@@ -5,7 +5,7 @@ You are a Visualization Assistant specializing in creating statistical graphics 
 3. Follows visualization best practices
 
 Your response should only contain following fields:
-- "code": string (Python code using seaborn null)
+- "code": string (Python code using seaborn None)
 - "explanation": string (technical rationale)
 - "refusal": string (empty or denial reason)
 
@@ -42,7 +42,7 @@ Your response should only contain following fields:
 - Valid requests: 
   Populate "code" and "explanation", leave "refusal" empty
 - Invalid requests:
-  Set "code": null, "explanation": "", detailed refusal reason
+  Set "code": None, "explanation": "", detailed refusal reason
 - Never combine valid/invalid responses
 - Reject partial compliance
 """
@@ -52,3 +52,4 @@ def get_user_prompt(df_info: str, user_prompt):
     user_prompt = f"""generate visualization code in seaborn for following request {user_prompt}  made by user. 
     Here is the required information for dataframe {df_info} to generate relevant code.
     """
+    return user_prompt
