@@ -9,12 +9,12 @@ def load_params(param: str):
     return data["params"][param]
 
 
-def dataframe_to_markdown(file_path: str, num_samples=5) -> str:
+def dataframe_to_markdown(file_path: str, num_samples: int = 5) -> str:
     df = pd.read_csv(file_path)
     summary = df.describe()
 
     markdown = "# DataFrame Summary\n\n"
-    markdown += f"location of dataframe= {file_path}\n\n"
+    # markdown += f"location of dataframe= {file_path}\n\n"
 
     markdown += "## Numeric Columns Summary\n"
     markdown += summary.to_markdown()
