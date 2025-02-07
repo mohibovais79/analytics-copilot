@@ -1,3 +1,4 @@
+from typing import Generator
 from dotenv import load_dotenv
 from openai import OpenAI
 
@@ -25,7 +26,7 @@ def llm_sql(system_message: str, client: OpenAI, user_prompt:str, stream: bool) 
     return completion.choices[0].message.content
 
 
-def llm_analysis(system_message: str, client: OpenAI, user_prompt:str, stream: bool) -> str:
+def llm_analysis(system_message: str, client: OpenAI, user_prompt:str, stream: bool) -> Generator:
     completion = client.chat.completions.create(
         model=load_params("model_name"),
         messages=[
