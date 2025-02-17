@@ -5,7 +5,7 @@ import time
 import llm
 import llm.analysis_prompt
 import llm.sql_prompt
-from engine.sql_executor import execute_sql
+from engine.sql_executor import analyze_sqlite_db, execute_sql
 from llm.agent import client, llm_analysis, llm_sql
 
 
@@ -21,7 +21,7 @@ def clean_sql_text(text: str) -> dict:
 
 
 if __name__ == "__main__":
-    db_info = execute_sql("SELECT name, sql FROM sqlite_master WHERE type='table';")
+    db_info = analyze_sqlite_db()
     user_prompt = "can you list actors name  starting with d only 5 "
     query_gen_start = time.time()
     response = llm_sql(llm.sql_prompt.get_system_message(db_info), client, user_prompt, stream=False)

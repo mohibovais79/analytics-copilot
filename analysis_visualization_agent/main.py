@@ -6,8 +6,8 @@ from llm import llm_explain, llm_visualize
 from utils import dataframe_to_markdown
 
 if __name__ == "__main__":
-    dataset = r""  # dataset path here
-    prompt = ""  # prompt
+    dataset = r"D:\data_analytics_llm\analysis_visualization_agent\data\hotel_bookings.csv"
+    prompt = "find me countries with most cancellation in resort hotel"  # prompt
     dataframe_summary = dataframe_to_markdown(dataset)
     user_prompt = get_user_prompt(dataframe_summary, prompt)
 

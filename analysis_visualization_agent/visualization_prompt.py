@@ -64,9 +64,13 @@ with sns.axes_style('style_name'):
 
 
 def get_user_prompt(df_info: str, user_prompt: str) -> str:
-    user_prompt = f"""generate visualization or analysis code depending upon following request {user_prompt}  made by user. 
-    Here is the required information for dataframe {df_info} to generate relevant code.
-    """
+    user_prompt = f"""
+Generate visualization or analysis code based on user request.
+User Request: 
+{user_prompt}
+Dataframe Info: 
+{df_info}
+"""
     return user_prompt
 
 
