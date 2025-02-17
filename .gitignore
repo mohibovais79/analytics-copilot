@@ -171,4 +171,9 @@ cython_debug/
 .pypirc
 *.csv
 *.ipynb
+*.png
 *.db
+/.vscode
+*.txt
+*.json
+analysis_visualization_agent/outputs/

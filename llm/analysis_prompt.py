@@ -21,25 +21,25 @@ system_prompt = """
 
 def get_user_prompt(user_prompt: str, sql_query: str, result: str):
     user_prompt = f"""
-    **User Question**: {user_prompt}
+**Analysis Requirements**:
+1. Create a factual summary BASED ONLY ON THESE RESULTS
+2. Highlight significant patterns/numbers FROM THE DATA
+3. If results are empty/insufficient, explain this clearly
+4. Never add assumptions or external context
+5. State if query doesn't fully answer the original question
 
-    **Executed SQL Query**: 
-    {sql_query}
-    
-    **Query Results** (Markdown format):
-    {result}
-    
-    **Analysis Requirements**:
-    1. Create a factual summary BASED ONLY ON THESE RESULTS
-    2. Highlight significant patterns/numbers FROM THE DATA
-    3. If results are empty/insufficient, explain this clearly
-    4. Never add assumptions or external context
-    5. State if query doesn't fully answer the original question
-    
-    **Response Rules**:
-    - Use simple business language
-    - Numbers must match exactly with results
-    - Comparisons require explicit data support
-    - Cite specific figures from results
-    - Avoid technical SQL terminology"""
+**Response Rules**:
+- Use simple business language
+- Numbers must match exactly with results
+- Comparisons require explicit data support
+- Cite specific figures from results
+- Avoid technical SQL terminology
+
+**User Question**: 
+{user_prompt}
+**Executed SQL Query**: 
+{sql_query}
+**Query Results** (Markdown format):
+{result}
+"""
     return user_prompt
