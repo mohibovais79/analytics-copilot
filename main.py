@@ -9,6 +9,7 @@ from engine.sql_executor import analyze_sqlite_db, execute_sql
 from llm.agent import client, llm_analysis, llm_sql
 
 
+
 def clean_sql_text(text: str) -> dict:
     match = re.search(r"\{.*\}", text, re.DOTALL)
     if match:
@@ -22,7 +23,7 @@ def clean_sql_text(text: str) -> dict:
 
 if __name__ == "__main__":
     db_info = analyze_sqlite_db()
-    user_prompt = "can you list actors name  starting with d only 5 "
+    user_prompt = "find me movie titles starting with B order by number of votes in ascending order only top 3"
     query_gen_start = time.time()
     response = llm_sql(llm.sql_prompt.get_system_message(db_info), client, user_prompt, stream=False)
     query_gen_end = time.time()

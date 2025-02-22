@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Chatbot Interface</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 2rem;
+        background-color: #f5f5f5;
+      }
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: #fff;
+        padding: 1rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .chat-window {
+        border: 1px solid #ddd;
+        padding: 1rem;
+        height: 400px;
+        overflow-y: auto;
+        margin-top: 1rem;
+        background: #fafafa;
+      }
+      .chat-message {
+        margin-bottom: 0.5rem;
+        padding: 0.5rem;
+        border-radius: 4px;
+      }
+      .chat-message.sql {
+        background-color: #e0f7fa;
+      }
+      .chat-message.results {
+        background-color: #e8f5e9;
+      }
+      .chat-message.analysis {
+        background-color: #fff3e0;
+      }
+      .chat-message.refusal {
+        background-color: #ffebee;
+      }
+      .chat-message.timings {
+        background-color: #e1bee7;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Chatbot Interface</h1>
+      <form id="chat-form">
+        <input
+          type="text"
+          id="prompt"
+          placeholder="Enter your prompt..."
+          style="width: 80%; padding: 0.5rem;"
+        />
+        <button type="submit" style="padding: 0.5rem 1rem;">Send</button>
+      </form>
+      <div id="chat-window" class="chat-window"></div>
+    </div>
+    <script>
+      const form = document.getElementById("chat-form");
+      const promptInput = document.getElementById("prompt");
+      const chatWindow = document.getElementById("chat-window");
+    
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const prompt = promptInput.value.trim();
+        if (!prompt) return;
+        // Clear previous messages
+        chatWindow.innerHTML = "";
+        // Create an EventSource to connect to the /stream endpoint
+        const eventSource = new EventSource(`/stream?prompt=${encodeURIComponent(prompt)}`);
+    
+        eventSource.onmessage = (event) => {
+          try {
+            let message = event.data;
+            // Remove the leading "data:" if present
+            if (message.startsWith("data:")) {
+              message = message.replace(/^data:\s*/, "");
+            }
+            const data = JSON.parse(message);
+    
+            // Handle analysis messages separately to combine them
+            if (data.type === "analysis") {
+              let analysisDiv = document.getElementById("analysis-message");
+              if (!analysisDiv) {
+                analysisDiv = document.createElement("div");
+                analysisDiv.id = "analysis-message";
+                analysisDiv.classList.add("chat-message", "analysis");
+                // Optionally, add a label
+                analysisDiv.innerHTML = `<strong>analysis:</strong> `;
+                chatWindow.appendChild(analysisDiv);
+              }
+              // Append the new chunk to the existing analysis content
+              analysisDiv.innerHTML += data.value;
+              chatWindow.scrollTop = chatWindow.scrollHeight;
+            } else {
+              // For all other message types, create a new div
+              const div = document.createElement("div");
+              div.classList.add("chat-message", data.type);
+              div.textContent = `${data.type}: ${data.value}`;
+              chatWindow.appendChild(div);
+              chatWindow.scrollTop = chatWindow.scrollHeight;
+            }
+          } catch (error) {
+            console.error("Error parsing SSE data:", error);
+          }
+        };
+    
+        eventSource.onerror = (err) => {
+          console.error("SSE error:", err);
+          eventSource.close();
+        };
+      });
+    </script>
+    
+  </body>
+</html>

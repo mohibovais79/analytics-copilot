@@ -25,9 +25,6 @@ def llm_sql(system_message: str, client: OpenAI, user_prompt: str, stream: bool)
         ],
         stream=stream,
     )
-    with open("llm_responses.json", "a") as f:
-        json.dump(completion.model_dump(), f, indent=4)
-        f.write("\n")
 
     return completion.choices[0].message.content
 
@@ -41,15 +38,8 @@ def llm_analysis(system_message: str, client: OpenAI, user_prompt: str, stream: 
         ],
         stream=stream,
     )
-    full_response = []
 
     for chunk in completion:
-        full_response.append(chunk.model_dump())
-
         content = chunk.choices[0].delta.content
         if content:
             yield content
-
-    with open("llm_responses.json", "a") as f:
-        json.dump(full_response, f, indent=4)
-        f.write("\n")

@@ -21,8 +21,7 @@ def execute_sql(query: str, db_conn=db_conn):
 
 
 def analyze_sqlite_db(db_conn: sqlite3.Connection = db_conn()) -> str:
-    conn = db_conn
-    cursor = conn.cursor()
+    cursor = db_conn.cursor()
 
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
     tables = cursor.fetchall()
@@ -32,7 +31,7 @@ def analyze_sqlite_db(db_conn: sqlite3.Connection = db_conn()) -> str:
     for table in tables:
         table_name = table[0]
 
-        df = pd.read_sql_query(f"SELECT * FROM {table_name}", conn)
+        df = pd.read_sql_query(f"SELECT * FROM {table_name}", db_conn)
 
         markdown = f"## Table: {table_name}\n"
         markdown += f"**Number of Rows**: {len(df)}\n\n"
@@ -80,7 +79,7 @@ def analyze_sqlite_db(db_conn: sqlite3.Connection = db_conn()) -> str:
 
         analysis_results.append(markdown)
 
-    conn.close()
+    db_conn.close()
     final_schema = "\n".join(analysis_results)
 
     return final_schema
