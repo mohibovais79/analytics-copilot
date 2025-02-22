@@ -7,7 +7,7 @@ import llm.analysis_prompt
 import llm.sql_prompt
 from engine.sql_executor import analyze_sqlite_db, execute_sql
 from llm.agent import client, llm_analysis, llm_sql
-
+from rag.pipeline import Rag
 
 
 def clean_sql_text(text: str) -> dict:
@@ -22,8 +22,21 @@ def clean_sql_text(text: str) -> dict:
 
 
 if __name__ == "__main__":
-    db_info = analyze_sqlite_db()
     user_prompt = "find me movie titles starting with B order by number of votes in ascending order only top 3"
+
+    db_info = analyze_sqlite_db()
+    rag = Rag(db_info)
+
+    vector_store = rag.vectorize()
+
+    response = rag.llm_response(user_prompt, vector_store)
+
+    print(response["answer"])
+
+    table_names = response["answer"]
+
+    db_info = analyze_sqlite_db(table_names=table_names)
+
     query_gen_start = time.time()
     response = llm_sql(llm.sql_prompt.get_system_message(db_info), client, user_prompt, stream=False)
     query_gen_end = time.time()

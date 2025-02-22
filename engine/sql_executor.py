@@ -1,3 +1,4 @@
+import ast
 import sqlite3
 
 import pandas as pd
@@ -20,15 +21,34 @@ def execute_sql(query: str, db_conn=db_conn):
     return markdown_output
 
 
-def analyze_sqlite_db(db_conn: sqlite3.Connection = db_conn()) -> str:
+def analyze_sqlite_db(db_conn: sqlite3.Connection = db_conn(), table_names: list[str] = []) -> str:
+    if isinstance(table_names, str):
+        try:
+            table_names = ast.literal_eval(table_names)
+        except Exception as e:
+            print(f"Error converting table_names from string to list: {e}")
+            table_names = []
     cursor = db_conn.cursor()
 
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
     tables = cursor.fetchall()
+    existing_table_names = [table[0] for table in tables]
+
+    if table_names:
+        valid_table_names = [name for name in table_names if name in existing_table_names]
+        if valid_table_names:
+            tables_to_analyze = [(t,) for t in valid_table_names]
+            print(f"Using only the following tables: {valid_table_names}")
+        else:
+            print(f"None of the specified tables exist. Using all tables: {existing_table_names}")
+            tables_to_analyze = tables
+    else:
+        print(f"Using all tables: {existing_table_names}")
+        tables_to_analyze = tables
 
     analysis_results = []
 
-    for table in tables:
+    for table in tables_to_analyze:
         table_name = table[0]
 
         df = pd.read_sql_query(f"SELECT * FROM {table_name}", db_conn)
@@ -79,7 +99,7 @@ def analyze_sqlite_db(db_conn: sqlite3.Connection = db_conn()) -> str:
 
         analysis_results.append(markdown)
 
-    db_conn.close()
+    cursor.close()
     final_schema = "\n".join(analysis_results)
 
     return final_schema
