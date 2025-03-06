@@ -2,7 +2,7 @@ import ast
 import importlib
 import re
 import textwrap
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 import matplotlib
 import pandas as pd
@@ -14,13 +14,13 @@ from utils import load_params
 
 
 class CodeExecutor:
-    def __init__(self, df: pd.DataFrame):
-        self.df = df.copy(deep=True)
+    def __init__(self, df_dict: dict[str, pd.DataFrame]):
+        self.df_dict = df_dict
         self.safe_globals = {}
 
         # for module in allowed_imports:
         #     self.safe_globals[module] = importlib.import_module(module)
-        self.safe_globals["df"] = self.df
+        self.safe_globals["df_dict"] = self.df_dict
 
     def filter_code(self, code: str) -> str:
         code = textwrap.dedent(code.replace("\t", "    "))
@@ -55,30 +55,28 @@ class CodeExecutor:
 
         return finalized_code
 
-    def execute_code(self, code: str) -> Optional[Tuple[str, str]]:
+    def execute_code(self, code: str, save=True) -> tuple[pd.DataFrame, Optional[Any]]:
         """Executes sanitized code in a controlled environment."""
         current_datetime = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
         self.final_df: Optional[pd.DataFrame] = None
         self.chart = None
-        final_df_path = f"outputs/output_{current_datetime}"
+        path_prefix = f"analysis_visualization_agent/outputs/output_{current_datetime}"
 
-        self.locals = {"df": self.df, "chart": self.chart, "final_df": self.final_df}
+        self.locals = {"df_dict": self.df_dict, "chart": self.chart, "final_df": self.final_df}
         clean_code = self.filter_code(code)
 
         try:
-            with open(f"outputs/code_{current_datetime}.py", "w") as f:
+            with open(f"analysis_visualization_agent/outputs/code_{current_datetime}.py", "w") as f:
                 f.write(clean_code)
             exec(clean_code, None, self.locals)
             self.chart = self.locals["chart"]
-            self.final_df = self.locals["final_df"]
-
-            if self.chart is not None:
-                self.chart.savefig(f"outputs/output_{current_datetime}.png")
-            if self.final_df is not None:
-                self.final_df.to_csv(f"{final_df_path}.csv", index=False)
-                return final_df_path, clean_code
-            return "", clean_code
-
+            self.final_df: pd.DataFrame = self.locals["final_df"]
+            if save:
+                if self.chart is not None:
+                    self.chart.savefig(f"{path_prefix}.png")
+                if self.final_df is not None:
+                    self.final_df.to_csv(f"{path_prefix}.csv", index=False)
+            return self.final_df, self.chart
         except Exception as e:
             print(f"Error while executing code: {str(e)}")
             print("Traceback:", e.__traceback__)

@@ -1,67 +1,92 @@
-from langchain.chains import create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.vectorstores import FAISS
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
+import hashlib
+import json
+import os
+from functools import lru_cache
 
-from engine.sql_executor import analyze_sqlite_db
+from langchain.docstore.document import Document
+from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
+from langchain_community.vectorstores import FAISS
+from langchain_huggingface import HuggingFaceEmbeddings
+
 from utils import load_params
 
 
 class Rag:
     def __init__(
         self,
-        db_info: str,
+        db_info_path: str,
         model_name: str = load_params("model_name"),
-        embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
+        embedding_model_name: str = "BAAI/bge-small-en-v1.5",
     ):
-        self.model_name = model_name
-        self.embedding_model_name = embedding_model_name
-        self.db_info = db_info
+        self.model_name: str = model_name
+        self.embedding_model_name: str = embedding_model_name
+        self.embedding_model: FastEmbedEmbeddings = self.load_embedding_model()
+        self.db_info_path: str = db_info_path
+        self.docs: list = self.load_db_info()
+        print("cache status: ", self.load_db_info.cache_info())
 
-    def load_embedding_model(self) -> HuggingFaceEmbeddings:
-        model_kwargs = {"device": "cpu"}
-        encode_kwargs = {"normalize_embeddings": False}
-        hf = HuggingFaceEmbeddings(
-            model_name=self.embedding_model_name, model_kwargs=model_kwargs, encode_kwargs=encode_kwargs
-        )
-        return hf
+    @lru_cache(maxsize=1)
+    def load_db_info(self) -> list:
+        with open(self.db_info_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        docs = []
+        for table_name, table_info in data.items():
+            doc_content = (
+                f"Table: {table_name}\n"
+                f"Description: {table_info.get('description', '')}\n"
+                f"Sample Questions: {table_info.get('sample_questions', [])}\n"
+                f"Columns:\n{json.dumps(table_info.get('columns', {}), indent=4)}"
+            )
+            docs.append(Document(page_content=doc_content, metadata={"table": table_name}))
+        return docs
+
+    def load_embedding_model(self) -> FastEmbedEmbeddings:
+        embeddings = FastEmbedEmbeddings(model_name=self.embedding_model_name, cache_dir="rag/embeddings")
+        return embeddings
+
+    def compute_db_hash(self) -> str:
+        with open(self.db_info_path, "rb") as f:
+            data = f.read()
+        return hashlib.md5(data).hexdigest()
 
     def vectorize(self):
-        hf = self.load_embedding_model()
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=500,
-            chunk_overlap=50,
-        )
-        documents = text_splitter.create_documents([self.db_info])
-        vector_db = FAISS.from_documents(documents, embedding=hf)
-        return vector_db
+        save_path = "vector_store"
+        db_hash = self.compute_db_hash()
+        hash_file = os.path.join(save_path, "hash.txt")
 
-    def llm_response(self, question, vector_store):
-        llm = ChatOpenAI(model=self.model_name, base_url="https://api.groq.com/openai/v1")
+        if os.path.exists(save_path) and os.path.exists(hash_file):
+            with open(hash_file, "r") as f:
+                stored_hash = f.read().strip()
+            if stored_hash == db_hash:
+                print("Existing vector store is up-to-date. Skipping vectorization.")
+                return
 
-        prompt = ChatPromptTemplate.from_template(
-            """
-            Based on the following database table information, determine the most relevant tables 
-            for the user's question. Provide only the list of table names as your answer like this ['table1', 'table2', ...].
-            <context>
-            {context}
-            </context>
-            Question: {input}
-            """
-        )
+        vector_store = FAISS.from_documents(self.docs, self.embedding_model)
+        os.makedirs(save_path, exist_ok=True)
+        vector_store.save_local(save_path)
+        with open(hash_file, "w") as f:
+            f.write(db_hash)
+        print(f"Vector store saved at: {save_path}")
 
-        document_chain = create_stuff_documents_chain(llm, prompt)
-
-        retriever = vector_store.as_retriever(search_kwargs={"k": 5})
-
-        retrieval_chain = create_retrieval_chain(retriever, document_chain)
-
-        response = retrieval_chain.invoke({"input": question})
-        return response
+    def vector_search(self, question, vector_store, top_k=3):
+        results = vector_store.similarity_search_with_score(question, k=top_k)
+        return results
 
 
 if __name__ == "__main__":
-    pass
+    db_info_path = "database_info.json"
+
+    rag = Rag(db_info_path=db_info_path)
+
+    rag.vectorize()
+
+    vector_store = FAISS.load_local("vector_store", rag.embedding_model, allow_dangerous_deserialization=True)
+
+    sample_question = "find name of people who is actor and director alsolimit by 5"
+
+    search_results = rag.vector_search(sample_question, vector_store, top_k=3)
+
+    for doc, score in search_results:
+        print(f"Score: {score:.4f}")
+        print(doc.page_content)
+        print("-" * 80)

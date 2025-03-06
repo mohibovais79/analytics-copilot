@@ -1,20 +1,30 @@
 import pandas as pd
-from executor import CodeExecutor
-from visualization_prompt import get_explaination_prompt, get_user_prompt, system_prompt
 
-from llm import llm_explain, llm_visualize
-from utils import dataframe_to_markdown
+from analysis_visualization_agent.executor import CodeExecutor
+from analysis_visualization_agent.llm import llm_explain, llm_visualize
+from analysis_visualization_agent.utils import dataframe_to_markdown
+from analysis_visualization_agent.visualization_prompt import get_explaination_prompt, get_user_prompt, system_prompt
 
 if __name__ == "__main__":
-    dataset = r"D:\data_analytics_llm\analysis_visualization_agent\data\hotel_bookings.csv"
-    prompt = "find me countries with most cancellation in resort hotel"  # prompt
-    dataframe_summary = dataframe_to_markdown(dataset)
+    dataset_paths = [
+        # "data/brands.csv",
+        # "data/categories.csv",
+        "data/customers.csv",
+        # "data/order_items.csv",
+        # "data/orders.csv",
+        # "data/products.csv",
+        # "data/staffs.csv",
+        # "data/stocks.csv",
+        # "data/stores.csv",
+    ]
+    prompt = "visualize unique states"  # prompt
+    dataframe_summary = dataframe_to_markdown(dataset_paths)
     user_prompt = get_user_prompt(dataframe_summary, prompt)
 
     response = llm_visualize(system_prompt, user_prompt)
     if response.code is not None:
         print(response.code)
-        df = pd.read_csv(dataset)
+        df = pd.read_csv(dataset_paths[0])
         executor = CodeExecutor(df)
         final_df_path, clean_code = executor.execute_code(response.code)
         if final_df_path is not None:

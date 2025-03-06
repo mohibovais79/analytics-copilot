@@ -8,7 +8,7 @@ Generate Python code that:
 5. For charts in the final_df only include those columns that were included in the visualization
 
 Your response should only contain following fields:
-- "code": string (Python code using seaborn None)
+- "code": string (Python code using seaborn)
 - "explanation": string (technical rationale)
 - "refusal": string (empty or denial reason)
 
@@ -28,22 +28,22 @@ Your response should only contain following fields:
    - matplotlib>=3.10.0 (import matplotlib.pyplot as plt)
    - numpy>=2.2.2 (import numpy as np)
    - Variables (already provided in local scope)
-   - df: pd.DataFrame (input dataframe provided)
+   - df_dict: dict[str, pd.DataFrame] (input dictionary of dataframes provided for each file)
    - final_df: pd.DataFrame (where the final dataframe will be stored after processing.)
    - chart: matplotlib.figure.Figure (store the final plt object in this variable if visualization is done.)
-   
 3. If any operations are required perform them by assigning df to final_df then performing any operations on final_df
-4. write every line using separate line donot use ; as a separator
-4. Do NOT include plt.show(), plt.savefig() or plt.figure() or attempt to save dataframe.
-5. Return ONLY the plotting code or analysis code as a plain string
-6. Include style resets where visualization is requested:
+4. If merge operations are perform use dataframe key as suffix and in visualization use only relevant fields with suffix where needed
+5. write every line using separate line donot use ; as a separator
+6. Do NOT include plt.show(), plt.savefig() or plt.figure() or attempt to save dataframe.
+7. Return ONLY the plotting code or analysis code as a plain string
+8. Include style resets where visualization is requested:
    with sns.axes_style('style_name'):
        plotting code
-6. Always include in visualizations:
+9. Always include in visualizations:
    - plt.title(), correct axis labels and plt.legend()
    
 **Example Output:**
-final_df=df
+final_df=df_dict["name"]
 with sns.axes_style('style_name'):
 
    sns.barplot(x='category', y='sales', data=final_Df)
@@ -68,7 +68,7 @@ def get_user_prompt(df_info: str, user_prompt: str) -> str:
 Generate visualization or analysis code based on user request.
 User Request: 
 {user_prompt}
-Dataframe Info: 
+Dataframes Info: 
 {df_info}
 """
     return user_prompt

@@ -3,6 +3,7 @@ from typing import Generator
 
 from dotenv import load_dotenv
 from openai import OpenAI
+from sql_prompt import planner_prompt
 
 from utils import load_params
 
@@ -25,7 +26,23 @@ def llm_sql(system_message: str, client: OpenAI, user_prompt: str, stream: bool)
         ],
         stream=stream,
     )
+    if not stream:
+        print(completion.usage)
 
+    return completion.choices[0].message.content
+
+
+def planner_llm(client: OpenAI, user_request: str, stream: bool) -> str:
+    completion = client.chat.completions.create(
+        model=load_params("planner_model_name"),
+        messages=[
+            {
+                "role": "system",
+                "content": planner_prompt.format(user_request=user_request),
+            }
+        ],
+        stream=stream,
+    )
     return completion.choices[0].message.content
 
 

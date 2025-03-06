@@ -42,11 +42,15 @@ class CSVToSQLite:
 
 if __name__ == "__main__":
     csv_files = [
-        "data/name_basics.csv",
-        "data/title_akas.csv",
-        "data/title_basics.csv",
-        "data/title_principals.csv",
-        "data/title_ratings.csv",
+        "data/brands.csv",
+        "data/categories.csv",
+        "data/customers.csv",
+        "data/order_items.csv",
+        "data/orders.csv",
+        "data/products.csv",
+        "data/staffs.csv",
+        "data/stocks.csv",
+        "data/stores.csv",
     ]
     db_name = load_params("db_name")
 

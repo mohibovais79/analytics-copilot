@@ -1,9 +1,12 @@
 import ast
 import sqlite3
+from functools import lru_cache
 
 import pandas as pd
+from langchain_community.vectorstores import FAISS
 
 from data.loader import db_conn
+from rag.pipeline import Rag
 
 
 def execute_sql(query: str, db_conn=db_conn):
@@ -21,6 +24,7 @@ def execute_sql(query: str, db_conn=db_conn):
     return markdown_output
 
 
+@lru_cache(maxsize=None)
 def analyze_sqlite_db(db_conn: sqlite3.Connection = db_conn(), table_names: list[str] = []) -> str:
     if isinstance(table_names, str):
         try:
@@ -102,4 +106,27 @@ def analyze_sqlite_db(db_conn: sqlite3.Connection = db_conn(), table_names: list
     cursor.close()
     final_schema = "\n".join(analysis_results)
 
+    return final_schema
+
+
+def get_schema(user_question: str, rag: Rag, vector_store, db_conn: sqlite3.Connection = db_conn()) -> str:
+    cursor = db_conn.cursor()
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+    tables = cursor.fetchall()
+    existing_table_names = [table[0] for table in tables]
+
+    final_schema = "# Tables in Database\n\n"
+    for table in existing_table_names:
+        final_schema += f"- {table}\n"
+        cursor.execute(f"PRAGMA table_info({table});")
+        columns = cursor.fetchall()
+        final_schema += "  - Columns:\n"
+        for column in columns:
+            final_schema += f"    - {column[1]}\n"
+
+    search_results = rag.vector_search(user_question, vector_store, top_k=3)
+    page_contents = [doc.page_content for doc, score in search_results]
+
+    final_schema += "\n\n## Relevant Table Information for this Question\n\n" + "\n\n".join(page_contents)
+    final_schema = final_schema.replace("|", "").replace("-", "").replace("{", "").replace("}", "")
     return final_schema

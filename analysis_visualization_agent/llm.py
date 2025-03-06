@@ -1,10 +1,10 @@
 from typing import Generator
 
 import instructor
-from models import VizResponse
+from analysis_visualization_agent.models import VizResponse
 from openai import OpenAI
 
-from utils import load_params
+from analysis_visualization_agent.utils import load_params
 
 
 def get_llm_client():

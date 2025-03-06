@@ -5,15 +5,23 @@ import random
 import time
 
 import pandas as pd
+import tiktoken
 from openai import RateLimitError
 
 import test.logging_config
-from engine.sql_executor import analyze_sqlite_db, execute_sql
+from engine.sql_executor import analyze_sqlite_db, execute_sql, get_schema
 from llm.agent import llm_sql
 from llm.sql_prompt import get_system_message
 from main import clean_sql_text
+from rag.pipeline import Rag
 from test.test_utils import get_prompt, make_async_call
 from utils import db_conn, load_params
+
+
+def prompt_length(prompt):
+    encoding = tiktoken.get_encoding("cl100k_base")
+    num_tokens = len(encoding.encode(prompt))
+    return num_tokens
 
 
 def get_random_value(cursor, table, column, condition=None, db_conn=db_conn()):
@@ -94,8 +102,8 @@ async def main():
     with open("test/test_cases.json", "r") as f:
         test_cases_json = json.load(f)
 
-    db_info = analyze_sqlite_db()
-    output_file = "test/test_results.csv"
+    db_info = get_schema()
+    output_file = "test/test_results_2.csv"
 
     for test_case in test_cases_json["test_cases"]:
         params = fetch_random_parameters(test_case, db_conn())
@@ -105,6 +113,8 @@ async def main():
         logging.info(f"Test SQL: {test_sql}")
 
         try:
+            print("system prompt length", prompt_length(get_system_message(db_info=db_info)))
+
             response = await make_async_call(
                 user_prompt=test_question,
                 system_prompt=get_system_message(db_info=db_info),
@@ -133,8 +143,12 @@ async def main():
             if test_result is not None:
                 lines = test_result.split("\n")
                 if len(lines) > 2:
-                    header = lines[:2]
-                    data_rows = lines[2:]
+                    if lines[1].strip().startswith("|:"):
+                        header = lines[:2]
+                        data_rows = lines[2:]
+                    else:
+                        header = [lines[0]]
+                        data_rows = lines[1:]
                     if len(data_rows) > 20:
                         data_rows = data_rows[:20]
                     test_result = "\n".join(header + data_rows)
@@ -142,21 +156,42 @@ async def main():
             if generated_result is not None:
                 lines = generated_result.split("\n")
                 if len(lines) > 2:
-                    header = lines[:2]
-                    data_rows = lines[2:]
+                    if lines[1].strip().startswith("|:"):
+                        header = lines[:2]
+                        data_rows = lines[2:]
+                    else:
+                        header = [lines[0]]
+                        data_rows = lines[1:]
                     if len(data_rows) > 20:
                         data_rows = data_rows[:20]
                     generated_result = "\n".join(header + data_rows)
-            logging.info(f"Test Result: {test_result}")
-            logging.info(f"Generated Result: {generated_result}")
         else:
             generated_sql = None
             test_result = execute_sql(test_sql)
+            lines = test_result.split("\n")
+            if len(lines) > 2:
+                if lines[1].strip().startswith("|:"):
+                    header = lines[:2]
+                    data_rows = lines[2:]
+                else:
+                    header = [lines[0]]
+                    data_rows = lines[1:]
+                if len(data_rows) > 20:
+                    data_rows = data_rows[:20]
+                test_result = "\n".join(header + data_rows)
+
             generated_result = None
 
         prompt = get_prompt(test_result, generated_result)
         similarity_output = ""
         try:
+            logging.info(f"Prompt: {prompt}")
+            print("user prompt length", prompt_length(prompt))
+            if prompt_length(prompt) > 6000:
+                print(test_sql)
+                print(generated_sql)
+                break
+                print(prompt)
             similarity_output = await make_async_call(user_prompt=prompt)
             logging.info(f"Similarity output: {similarity_output}")
         except RateLimitError:
