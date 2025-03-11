@@ -40,7 +40,15 @@ if __name__ == "__main__":
         user_input = input("User: ")
         if user_input.lower() == "exit":
             break
-        planner_response = planner_llm(client, user_input, stream=False)
+        database_schema = get_schema(user_input, rag_instance, vector_store)
+        planner_response = planner_llm(client, user_input, database_schema, stream=False)
+        planner_pattern = r"\{[^{}]*\}"
+
+        match = re.search(planner_pattern, planner_response)
+        if match:
+            json_str = match.group()
+            data = json.loads(json_str)
+            planner_response = data.get("mode")
         print(planner_response.lower())
         if planner_response.lower() == "sql":
             query_execute_time = 0
@@ -48,7 +56,6 @@ if __name__ == "__main__":
 
             database_schema = get_schema(user_input, rag_instance, vector_store)
             print("\n")
-            print("relevant schema", database_schema)
 
             query_gen_start = time.time()
             response = llm_sql(
@@ -129,12 +136,6 @@ if __name__ == "__main__":
                                 }
                             )
 
-                elif key == "refusal" and value is not None:
-                    print(value)
-
-            if not json_response.get("sql") and not json_response.get("refusal") and json_response.get("explanation"):
-                print(json_response["explanation"])
-
             print(
                 f"\nquery generation time = {query_time} seconds.\n query execution time = {query_execute_time} seconds.\nAnalysis time = {analysis_time} seconds \n"
             )
@@ -154,22 +155,34 @@ if __name__ == "__main__":
             for dataset_path in dataset_paths:
                 fn = os.path.splitext(os.path.basename(dataset_path))[0]
                 df_dict[fn] = pd.read_csv(dataset_path)
-            df_summary = dataframe_to_markdown(df_dict)
-            user_prompt = get_user_prompt(df_summary, user_input)
-            response = llm_visualize(system_prompt, user_prompt)
+            df_summary = get_schema(user_input, rag_instance, vector_store)
+            user_prompt = get_user_prompt(user_input)
+            with open("requirements.txt", "r") as f:
+                libraries = f.read()
+            libraries = libraries.replace(">", "")
+
+            response = llm_visualize(system_prompt.format(df_info=df_summary, libraries=libraries), user_prompt)
 
             if response.code is not None:
-                print(response.code)
-                executor = CodeExecutor(df_dict)
+                print("generated code", response.code)
+                executor = CodeExecutor()
                 final_df, clean_code = executor.execute_code(response.code)
                 final_df_md = final_df.head(10).to_markdown()
 
                 explanation_prompt = get_explaination_prompt(final_df_md, user_input, clean_code)
                 for response_chunk in llm_explain(explanation_prompt):
                     print(response_chunk, end="")
+                print("\n")
 
-            else:
-                print(response.refusal)
+        elif planner_response.lower() == "general":
+            for response_chunk in llm_analysis(
+                f"Answer the user's question according to provided schema {database_schema}. If question is not relevant simply deny the request with reason.",
+                client,
+                user_input,
+                stream=True,
+            ):
+                print(response_chunk, end="")
 
-        else:
-            print("Invalid request")
+        elif planner_response.lower() in ["none", "null", ""]:
+            refusal_reason = data.get("refusal")
+            print(refusal_reason)

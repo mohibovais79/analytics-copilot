@@ -1,6 +1,7 @@
 import ast
 import importlib
 import re
+import sqlite3
 import textwrap
 from typing import Any, Optional, Tuple
 
@@ -8,19 +9,18 @@ import matplotlib
 import pandas as pd
 from matplotlib import pyplot as plt
 
-from utils import load_params
+from utils import db_conn, load_params
 
 # allowed_imports = load_params("allowed_modules")
 
 
 class CodeExecutor:
-    def __init__(self, df_dict: dict[str, pd.DataFrame]):
-        self.df_dict = df_dict
+    def __init__(self):
         self.safe_globals = {}
+        self.db_conn: sqlite3.Connection = db_conn()
 
         # for module in allowed_imports:
         #     self.safe_globals[module] = importlib.import_module(module)
-        self.safe_globals["df_dict"] = self.df_dict
 
     def filter_code(self, code: str) -> str:
         code = textwrap.dedent(code.replace("\t", "    "))
@@ -62,12 +62,13 @@ class CodeExecutor:
         self.chart = None
         path_prefix = f"analysis_visualization_agent/outputs/output_{current_datetime}"
 
-        self.locals = {"df_dict": self.df_dict, "chart": self.chart, "final_df": self.final_df}
+        self.locals = {"db_conn": self.db_conn, "chart": self.chart, "final_df": self.final_df}
         clean_code = self.filter_code(code)
 
         try:
             with open(f"analysis_visualization_agent/outputs/code_{current_datetime}.py", "w") as f:
                 f.write(clean_code)
+            print(clean_code)
             exec(clean_code, None, self.locals)
             self.chart = self.locals["chart"]
             self.final_df: pd.DataFrame = self.locals["final_df"]
