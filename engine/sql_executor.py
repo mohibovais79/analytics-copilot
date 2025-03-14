@@ -20,8 +20,8 @@ def execute_sql(query: str, db_conn=db_conn):
     connection = db_conn()
 
     df = pd.read_sql_query(query, connection)
-    markdown_output = df.to_markdown(index=False)
-    return markdown_output
+    
+    return df
 
 
 @lru_cache(maxsize=None)

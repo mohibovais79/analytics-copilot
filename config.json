@@ -1,7 +1,8 @@
 {
     "params": {
         "db_name": "bicycle.db",
-        "model_name": "llama-3.3-70b-versatile",
-        "planner_model_name": "llama-3.3-70b-versatile"
+        "model_name": "gemini-2.0-flash",
+        "planner_model_name": "gemini-2.0-flash",
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/"
     }
 }

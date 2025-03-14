@@ -11,7 +11,7 @@ load_dotenv(override=True)
 
 
 def get_llm_client():
-    return OpenAI(base_url="https://api.groq.com/openai/v1")
+    return OpenAI(base_url=load_params("base_url"))
 
 
 client = get_llm_client()
@@ -38,8 +38,9 @@ def planner_llm(client: OpenAI, user_request: str, db_info: str, stream: bool) -
         messages=[
             {
                 "role": "system",
-                "content": planner_prompt.format(user_request=user_request, database_schema=db_info),
-            }
+                "content": planner_prompt.format(database_schema=db_info),
+            },
+            {"role": "user", "content": user_request},
         ],
         stream=stream,
     )

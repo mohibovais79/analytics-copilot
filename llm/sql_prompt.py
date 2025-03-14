@@ -59,7 +59,6 @@ Response Rules:
 - Do NOT provide any additional text or explanation besides the JSON response.
 - Strictly follow the provided database schema when deciding the mode or triggering a refusal.
 
-User's Request: {user_request}
 Database Schema: {database_schema}
 """
 

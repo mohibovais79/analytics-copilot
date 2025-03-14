@@ -6,6 +6,8 @@ import time
 
 import pandas as pd
 from langchain_community.vectorstores import FAISS
+from utils import serialize_dataframe
+
 
 import llm
 import llm.analysis_prompt
@@ -41,6 +43,7 @@ if __name__ == "__main__":
         if user_input.lower() == "exit":
             break
         database_schema = get_schema(user_input, rag_instance, vector_store)
+
         planner_response = planner_llm(client, user_input, database_schema, stream=False)
         planner_pattern = r"\{[^{}]*\}"
 
@@ -64,7 +67,14 @@ if __name__ == "__main__":
             query_gen_end = time.time()
             query_time = round(query_gen_end - query_gen_start, 2)
             json_response = clean_sql_text(response)
+            
+            print(json_response)
+            if not isinstance(json_response, dict):
+                print("Error, Please try again.")
+                continue
+
             print("\n")
+            
 
             for key, value in json_response.items():
                 if key == "sql":
@@ -90,17 +100,7 @@ if __name__ == "__main__":
                         query_execute_end = time.time()
                         query_execute_time = round(query_execute_end - query_execute_start, 2)
 
-                        lines = results.split("\n")
-                        if len(lines) > 2:
-                            if lines[1].strip().startswith("|:"):
-                                header = lines[:2]
-                                data_rows = lines[2:]
-                            else:
-                                header = [lines[0]]
-                                data_rows = lines[1:]
-                            if len(data_rows) > 20:
-                                data_rows = data_rows[:20]
-                            results = "\n".join(header + data_rows)
+                        results=serialize_dataframe(results)
 
                         print("\nExecuted SQL Query:")
                         print(value)
@@ -167,16 +167,18 @@ if __name__ == "__main__":
                 print("generated code", response.code)
                 executor = CodeExecutor()
                 final_df, clean_code = executor.execute_code(response.code)
-                final_df_md = final_df.head(10).to_markdown()
+                results=serialize_dataframe(final_df)
+                
 
-                explanation_prompt = get_explaination_prompt(final_df_md, user_input, clean_code)
+                explanation_prompt = get_explaination_prompt(results, user_input, clean_code)
                 for response_chunk in llm_explain(explanation_prompt):
                     print(response_chunk, end="")
                 print("\n")
 
         elif planner_response.lower() == "general":
             for response_chunk in llm_analysis(
-                f"Answer the user's question according to provided schema {database_schema}. If question is not relevant simply deny the request with reason.",
+                f"Answer the user's question according to provided schema {database_schema}. If question is not relevant simply deny the request with reason. latest messages in the list need to be assigned more priority.
+ This is the provided memory context: {memory_context}",
                 client,
                 user_input,
                 stream=True,

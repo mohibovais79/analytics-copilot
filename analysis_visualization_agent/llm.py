@@ -1,18 +1,18 @@
 from typing import Generator
 
 import instructor
-from analysis_visualization_agent.models import VizResponse
 from openai import OpenAI
 
+from analysis_visualization_agent.models import VizResponse
 from analysis_visualization_agent.utils import load_params
 
 
 def get_llm_client():
-    return OpenAI(base_url="https://api.groq.com/openai/v1")
+    return OpenAI(base_url=load_params("base_url"))
 
 
 def llm_visualize(system_message: str, user_prompt: str) -> VizResponse:
-    client = instructor.from_openai(get_llm_client(), mode=instructor.Mode.JSON_SCHEMA)
+    client = instructor.from_openai(get_llm_client(), mode=instructor.Mode.JSON)
 
     completion = client.chat.completions.create(
         model=load_params("model_name"),
