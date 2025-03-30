@@ -44,7 +44,9 @@ async def event_stream(user_prompt: str):
 
     query_gen_start = time.time()
     try:
-        response = llm_sql(get_system_message(db_info), client, user_prompt, stream=False)
+        response = llm_sql(
+            get_system_message(db_info), client, user_prompt, stream=False
+        )
     except RateLimitError:
         response = "Rate limit exceeded. Please try again later."
     query_gen_end = time.time()
@@ -91,7 +93,9 @@ async def event_stream(user_prompt: str):
 
 
 @app.get("/stream")
-async def stream(request: Request, prompt: str = Query(..., description="User prompt for the query")):
+async def stream(
+    request: Request, prompt: str = Query(..., description="User prompt for the query")
+):
     """
     SSE endpoint using sse_starlette's EventSourceResponse.
     Clients connect here to receive streaming messages.

@@ -6,7 +6,6 @@ from functools import lru_cache
 from langchain.docstore.document import Document
 from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
 from langchain_community.vectorstores import FAISS
-from langchain_huggingface import HuggingFaceEmbeddings
 
 from utils import load_params
 
@@ -37,11 +36,15 @@ class Rag:
                 f"Sample Questions: {table_info.get('sample_questions', [])}\n"
                 f"Columns:\n{json.dumps(table_info.get('columns', {}), indent=4)}"
             )
-            docs.append(Document(page_content=doc_content, metadata={"table": table_name}))
+            docs.append(
+                Document(page_content=doc_content, metadata={"table": table_name})
+            )
         return docs
 
     def load_embedding_model(self) -> FastEmbedEmbeddings:
-        embeddings = FastEmbedEmbeddings(model_name=self.embedding_model_name, cache_dir="rag/embeddings")
+        embeddings = FastEmbedEmbeddings(
+            model_name=self.embedding_model_name, cache_dir="rag/embeddings"
+        )
         return embeddings
 
     def compute_db_hash(self) -> str:
@@ -80,7 +83,9 @@ if __name__ == "__main__":
 
     rag.vectorize()
 
-    vector_store = FAISS.load_local("vector_store", rag.embedding_model, allow_dangerous_deserialization=True)
+    vector_store = FAISS.load_local(
+        "vector_store", rag.embedding_model, allow_dangerous_deserialization=True
+    )
 
     sample_question = "find name of people who is actor and director alsolimit by 5"
 

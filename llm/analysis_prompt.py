@@ -18,7 +18,10 @@ system_prompt = """
   Limitations: [Data constraints]
 """
 
-def get_user_prompt(user_prompt: str, sql_query: str, result: str, memory_context: list) -> str:
+
+def get_user_prompt(
+    user_prompt: str, sql_query: str, result: str, memory_context: list
+) -> str:
     memory_str = ""
     if memory_context:
         memory_str += "**Previous Interactions:**\n"

@@ -27,6 +27,7 @@ Your response should only contain following fields:
    - Use exact table names from schema
    - Include necessary joins in SQL
    - never use markdown or any other formatting
+   - always enclose sql in triple quotes
 
 3. If any operations are required perform them by assigning df to final_df then performing any operations on final_df
 4. Merging logic:

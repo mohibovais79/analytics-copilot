@@ -1,15 +1,11 @@
 import ast
-import importlib
-import re
 import sqlite3
 import textwrap
-from typing import Any, Optional, Tuple
+from typing import Any, Optional
 
-import matplotlib
 import pandas as pd
-from matplotlib import pyplot as plt
 
-from utils import db_conn, load_params
+from utils import db_conn
 
 # allowed_imports = load_params("allowed_modules")
 
@@ -62,11 +58,17 @@ class CodeExecutor:
         self.chart = None
         path_prefix = f"analysis_visualization_agent/outputs/output_{current_datetime}"
 
-        self.locals = {"db_conn": self.db_conn, "chart": self.chart, "final_df": self.final_df}
+        self.locals = {
+            "db_conn": self.db_conn,
+            "chart": self.chart,
+            "final_df": self.final_df,
+        }
         clean_code = self.filter_code(code)
 
         try:
-            with open(f"analysis_visualization_agent/outputs/code_{current_datetime}.py", "w") as f:
+            with open(
+                f"analysis_visualization_agent/outputs/code_{current_datetime}.py", "w"
+            ) as f:
                 f.write(clean_code)
             print(clean_code)
             exec(clean_code, None, self.locals)

@@ -9,7 +9,9 @@ def load_params(param: str):
     return data["params"][param]
 
 
-def dataframe_to_markdown(df_dict: dict[str, pd.DataFrame], num_samples: int = 2, max_unique_values: int = 10) -> str:
+def dataframe_to_markdown(
+    df_dict: dict[str, pd.DataFrame], num_samples: int = 2, max_unique_values: int = 10
+) -> str:
     markdown = ""
     for name, df in df_dict.items():
         summary = df.describe()
@@ -42,7 +44,10 @@ def dataframe_to_markdown(df_dict: dict[str, pd.DataFrame], num_samples: int = 2
                 markdown += f"# {column} (Total Unique: {total_unique})\n"
 
                 if total_unique > max_unique_values:
-                    markdown += ", ".join(map(str, unique_values[:max_unique_values])) + ", ... (truncated)\n"
+                    markdown += (
+                        ", ".join(map(str, unique_values[:max_unique_values]))
+                        + ", ... (truncated)\n"
+                    )
                 else:
                     markdown += ", ".join(map(str, unique_values)) + "\n"
 

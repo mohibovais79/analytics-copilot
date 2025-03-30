@@ -45,7 +45,10 @@ client = get_llm_client()
 @backoff.on_exception(backoff.expo, RateLimitError)
 async def make_async_call(user_prompt: str, system_prompt: Optional[str] = None):
     if system_prompt:
-        messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
     else:
         messages = [{"role": "user", "content": user_prompt}]
     response = await client.chat.completions.create(

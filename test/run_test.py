@@ -8,14 +8,11 @@ import pandas as pd
 import tiktoken
 from openai import RateLimitError
 
-import test.logging_config
-from engine.sql_executor import analyze_sqlite_db, execute_sql, get_schema
-from llm.agent import llm_sql
+from engine.sql_executor import execute_sql, get_schema
 from llm.sql_prompt import get_system_message
 from main import clean_sql_text
-from rag.pipeline import Rag
 from test.test_utils import get_prompt, make_async_call
-from utils import db_conn, load_params
+from utils import db_conn
 
 
 def prompt_length(prompt):
@@ -44,7 +41,9 @@ def fetch_random_parameters(test_case, db_conn):
         if param == "N" and param_type == "integer":
             params[param] = random.randint(5, 10)
         elif param == "min_votes" and param_type == "integer":
-            params[param] = get_random_value(cursor, "title_ratings", "numVotes", "numVotes > 1000")
+            params[param] = get_random_value(
+                cursor, "title_ratings", "numVotes", "numVotes > 1000"
+            )
             if params[param] is None:
                 params[param] = random.randint(1000, 5000)
         elif param == "title_id" and param_type == "string":
@@ -52,7 +51,9 @@ def fetch_random_parameters(test_case, db_conn):
         elif param == "region" and param_type == "string":
             params[param] = get_random_value(cursor, "title_akas", "region")
         elif param == "genre" and param_type == "string":
-            cursor.execute("SELECT DISTINCT genres FROM title_basics WHERE genres IS NOT NULL;")
+            cursor.execute(
+                "SELECT DISTINCT genres FROM title_basics WHERE genres IS NOT NULL;"
+            )
             genre_rows = cursor.fetchall()
             genres_set = set()
             for row in genre_rows:
@@ -64,7 +65,9 @@ def fetch_random_parameters(test_case, db_conn):
             else:
                 params[param] = "Drama"
         elif param == "year" and param_type == "integer":
-            params[param] = get_random_value(cursor, "title_basics", "startYear", "startYear IS NOT NULL")
+            params[param] = get_random_value(
+                cursor, "title_basics", "startYear", "startYear IS NOT NULL"
+            )
             if params[param] is None:
                 params[param] = random.randint(1900, 2025)
         elif param == "person_id" and param_type == "string":
@@ -113,7 +116,10 @@ async def main():
         logging.info(f"Test SQL: {test_sql}")
 
         try:
-            print("system prompt length", prompt_length(get_system_message(db_info=db_info)))
+            print(
+                "system prompt length",
+                prompt_length(get_system_message(db_info=db_info)),
+            )
 
             response = await make_async_call(
                 user_prompt=test_question,
@@ -195,12 +201,16 @@ async def main():
             similarity_output = await make_async_call(user_prompt=prompt)
             logging.info(f"Similarity output: {similarity_output}")
         except RateLimitError:
-            logging.info("Rate limit exceeded during similarity check. Please try again later.")
+            logging.info(
+                "Rate limit exceeded during similarity check. Please try again later."
+            )
             await asyncio.sleep(5)
             continue
 
         try:
-            relevance_score_str, results_similarity_score_str = similarity_output.split(",")
+            relevance_score_str, results_similarity_score_str = similarity_output.split(
+                ","
+            )
             relevance_score = float(relevance_score_str.strip())
             results_similarity_score = float(results_similarity_score_str.strip())
         except Exception as e:
