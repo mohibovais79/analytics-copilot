@@ -20,14 +20,11 @@ tools = [
         "type": "function",
         "function": {
             "name": "sql_flow",
-            "description": "Generates SQL based on a user query, executes the SQL, performs analysis over the results and returns a dictionary containing user_prompt, sql, results, and analysis.",
+            "description": "Generates and executes SQL based on the user's question.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "user_input": {
-                        "type": "string",
-                        "description": "User query on which analysis needs to be performed using SQL.",
-                    },
+                    "user_input": {"type": "string", "description": "User analytical question"},
                     "memory_context": {"type": "array", "description": "Past interactions or context from the user."},
                 },
                 "required": ["user_input", "memory_context"],
@@ -38,13 +35,13 @@ tools = [
         "type": "function",
         "function": {
             "name": "python_flow",
-            "description": "Generates code based on a user query, executes the code, and returns a dictionary containing user_prompt, code, results, and analysis.",
+            "description": "Generates code based on a user question, executes the code, and returns a dictionary containing user_prompt, code, results, and analysis.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "user_input": {
                         "type": "string",
-                        "description": "User query on which code generation and execution need to be performed.",
+                        "description": "User question on which code generation and execution need to be performed.",
                     }
                 },
                 "required": ["user_input"],
@@ -55,11 +52,11 @@ tools = [
         "type": "function",
         "function": {
             "name": "general_flow",
-            "description": "Processes a user query along with memory context to provide a general analysis using a predefined schema. Returns a dictionary containing user_prompt, code, results, and analysis.",
+            "description": "Processes a user question along with memory context to provide a general analysis using a predefined schema. Returns a dictionary containing user_prompt, code, results, and analysis.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "user_input": {"type": "string", "description": "User query to be analyzed."},
+                    "user_input": {"type": "string", "description": "User question to be analyzed."},
                     "memory_context": {
                         "type": "array",
                         "description": "Past interactions or context to be considered in the analysis.",
@@ -73,13 +70,13 @@ tools = [
         "type": "function",
         "function": {
             "name": "multi_flow",
-            "description": "Generates and executes multiple SQL queries from a user query. Returns a dictionary containing user_prompt and multi_context (a list of objects with user_prompt, sql, results, and analysis for each query).",
+            "description": "Generates and executes multiple SQL queries from a user question. Returns a dictionary containing user_prompt and multi_context (a list of objects with user_prompt, sql, results, and analysis for each query).",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "user_input": {
                         "type": "string",
-                        "description": "User query from which multiple SQL queries are generated and executed.",
+                        "description": "User question from which multiple SQL queries are generated and executed.",
                     }
                 },
                 "required": ["user_input"],
@@ -107,11 +104,10 @@ class AgentDecision(BaseModel):
 
 
 class IterativeReActAgent:
-    def __init__(self, model_name="llama-3.3-70b-versatile", max_iterations=5, max_turns=10):
+    def __init__(self, model_name="llama-3.3-70b-versatile", max_iterations=5):
         self.client = instructor.from_groq(Groq(), mode=instructor.Mode.JSON)
         self.model_name = model_name
         self.max_iterations = max_iterations
-        self.max_turns = max_turns
         self.conversation_history = []
         self.memory_context = []
 
@@ -119,23 +115,19 @@ class IterativeReActAgent:
         self.conversation_history.append({"role": role, "content": content})
 
     def _add_to_memory(self, interaction: Dict[str, Any]):
-        # Only store the final answer and user prompt in memory, not the reasoning steps
         if "final_answer" in interaction:
             simplified_interaction = {
                 "user_prompt": interaction["user_prompt"],
                 "final_answer": interaction["final_answer"],
             }
             self.memory_context.append(simplified_interaction)
-        # For tool calls, only store minimal information
         elif "tool" in interaction:
             simplified_interaction = {"user_prompt": interaction["user_prompt"], "tool_used": interaction["tool"]}
-            # If there's an analysis in the result, include that
             if "result" in interaction and "analysis" in interaction["result"]:
                 simplified_interaction["analysis"] = interaction["result"]["analysis"]
 
             self.memory_context.append(simplified_interaction)
 
-        # Maintain the memory context size limit
         if len(self.memory_context) > 10:
             self.memory_context = self.memory_context[-10:]
 
@@ -166,6 +158,16 @@ class IterativeReActAgent:
 
         return f"Raw response: {json.dumps(response, indent=2)}"
 
+    def _prepare_tool_parameters(self, tool_name: str, user_input: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
+        prepared_params = {}
+
+        prepared_params["user_input"] = user_input
+
+        if tool_name in ["sql_flow", "general_flow"]:
+            prepared_params["memory_context"] = self.memory_context
+
+        return prepared_params
+
     def _execute_tool(self, tool_name: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
         tool_function = {
             "sql_flow": sql_flow,
@@ -178,9 +180,6 @@ class IterativeReActAgent:
             return {"error": f"Unknown tool: {tool_name}"}
 
         try:
-            if tool_name in ["sql_flow", "general_flow"] and "memory_context" not in parameters:
-                parameters["memory_context"] = self.memory_context
-
             return tool_function(**parameters)
         except Exception as e:
             return {"error": f"Error executing {tool_name}: {str(e)}"}
@@ -195,9 +194,15 @@ Follow these steps for each request:
    - What the user wants to accomplish
    - What data is needed
    - Which tool would be most appropriate
+   - Identify parameters needed to call relevant tool from tool description
    - Whether the request is valid according to system policies
 
-2. ACT: Select and call the most appropriate tool based on the user's request:
+2. ACT: Select and call the most appropriate tool based on the user's request.
+   IMPORTANT: You MUST set is_complete to false when you need to use a tool.
+   Only set is_complete to true when you have a final answer based on tool results.
+
+DO NOT include SQL queries or Python code in your tool parameters. The tools will generate the appropriate code based on the user input.
+ONLY include the required parameters as specified in the tool descriptions. For most tools, this is just 'user_input'.
 
    Choose tools based on these guidelines:
    - Use 'sql_flow' for data retrieval, filtering, or aggregation requests
@@ -221,6 +226,8 @@ Before selecting a tool, verify that every table, column, or field mentioned in 
 
 The database schema includes: {database_schema}
 
+
+
 Once you have gathered all the information needed, provide a final answer and set is_complete to true.
         """
 
@@ -234,9 +241,6 @@ Once you have gathered all the information needed, provide a final answer and se
         messages.extend(relevant_history)
 
         workspace = {"query": user_input, "steps": [], "current_context": ""}
-        print(f"\n{'=' * 50}")
-        print(f"Starting analysis for: {user_input}")
-        print(f"{'=' * 50}\n")
 
         for iteration in range(self.max_iterations):
             try:
@@ -246,7 +250,7 @@ Once you have gathered all the information needed, provide a final answer and se
                     iteration_messages.append(
                         {
                             "role": "assistant",
-                            "content": f"Previous reasoning steps and tool results:\n{workspace['current_context']}",
+                            "content": f"Previous reasoning steps and tool results:\n{str(workspace['current_context'])}",
                         }
                     )
 
@@ -254,10 +258,31 @@ Once you have gathered all the information needed, provide a final answer and se
                     model=self.model_name, response_model=AgentDecision, messages=iteration_messages
                 )
 
-                step_record = f"Step {iteration + 1}:\nThought: {response.reasoning.thought}\n"
-                print(f"\n🌀 Thought {iteration + 1}: {response.reasoning.thought}")
+                if response.is_complete and not workspace["steps"]:
+                    print("WARNING: Agent marked completion without tool execution. Overriding decision.")
+                    response.is_complete = False
+                    if not response.reasoning.should_use_tool:
+                        response.reasoning.should_use_tool = True
+                        if not response.tool_call:
+                            default_tool = "sql_flow"
+                            if (
+                                "visual" in user_input.lower()
+                                or "chart" in user_input.lower()
+                                or "plot" in user_input.lower()
+                            ):
+                                default_tool = "python_flow"
+                            if "all" in user_input.lower() and "queries" in user_input.lower():
+                                default_tool = "multi_flow"
 
-                if response.is_complete:
+                            response.tool_call = ToolCallStep(
+                                tool_name=default_tool, tool_parameters={"user_input": user_input}
+                            )
+                            print(f"Added default tool call to {default_tool}")
+
+                step_record = f"Step {iteration + 1}:\nThought: {response.reasoning.thought}\n"
+                print(f"\n Thought {iteration + 1}: {response.reasoning.thought}")
+
+                if response.is_complete and response.final_answer:
                     step_record += f"Final Answer: {response.final_answer}\n"
                     workspace["steps"].append(step_record)
                     workspace["current_context"] += step_record
@@ -265,14 +290,15 @@ Once you have gathered all the information needed, provide a final answer and se
                     self._add_to_memory({"user_prompt": user_input, "final_answer": response.final_answer})
 
                     self._add_to_history("assistant", response.final_answer)
-                    print(f"\n🎯 Final Answer: {response.final_answer}")
+                    print(f"\n Final Answer: {response.final_answer}")
 
                     return response.final_answer
 
                 if response.reasoning.should_use_tool and response.tool_call:
                     tool_name = response.tool_call.tool_name
-                    parameters = response.tool_call.tool_parameters
-                    print(f"🛠️  Action: Using {tool_name} with parameters: {json.dumps(parameters, indent=2)}")
+                    parameters = self._prepare_tool_parameters(
+                        tool_name, user_input, response.tool_call.tool_parameters
+                    )
 
                     step_record += f"Action: Using tool '{tool_name}' with parameters: {json.dumps(parameters)}\n"
 
@@ -280,7 +306,7 @@ Once you have gathered all the information needed, provide a final answer and se
 
                     formatted_result = self._format_tool_response(tool_name, tool_result)
                     step_record += f"Tool Result: {formatted_result}\n"
-                    print(f"🔧 Tool Result:\n{formatted_result}")
+                    print(f" Tool Result:\n{formatted_result}")
 
                     self._add_to_memory(
                         {
@@ -291,7 +317,6 @@ Once you have gathered all the information needed, provide a final answer and se
                     )
                 else:
                     step_record += "Action: No tool used in this step.\n"
-                    print("⏭️  Action: No tool used in this step")
 
                 workspace["steps"].append(step_record)
                 print(step_record)
@@ -300,6 +325,8 @@ Once you have gathered all the information needed, provide a final answer and se
 
             except Exception as e:
                 error_message = f"An error occurred during iteration {iteration + 1}: {str(e)}"
+                print(f"ERROR: {error_message}")
+                print(f"Error details: {type(e).__name__}")
                 self._add_to_history("assistant", error_message)
                 return error_message
 
@@ -338,7 +365,7 @@ if __name__ == "__main__":
 
     while True:
         user_input = input("User: ")
-        os.system("cls")
+        os.system("cls" if os.name == "nt" else "clear")  # Use clear for Unix-based systems
         print("User: ", user_input)
 
         if user_input.lower() == "exit":
