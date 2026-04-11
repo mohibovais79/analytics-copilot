@@ -169,3 +169,14 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+*.csv
+*.ipynb
+*.png
+*.db
+/.vscode
+*.txt
+*.json
+analysis_visualization_agent/outputs/
+test/test_casesjson/
+vector_Store/
+rag/embeddings/

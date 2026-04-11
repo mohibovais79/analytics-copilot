@@ -1,0 +1,8 @@
+{
+    "params": {
+        "db_name": "bicycle.db",
+        "model_name": "llama-3.3-70b-versatile",
+        "planner_model_name": "gemini-2.0-flash",
+        "base_url": "https://api.groq.com/openai/v1"
+    }
+}
